@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -107,9 +106,7 @@ func (s *Server) send(segment Segment) error {
 		return err
 	}
 
-	fmt.Println("Json segment:", string(jsonData))
-
-req, err := http.NewRequest("POST", s.Destination, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", s.Destination, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}

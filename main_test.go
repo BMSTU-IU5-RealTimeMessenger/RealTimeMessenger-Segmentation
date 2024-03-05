@@ -62,11 +62,26 @@ func TestSplit(t *testing.T) {
 	}
 }
 
+// CreateMessage takes data and a timestamp, marshals them into a Message struct, and returns the JSON representation as a string.
+// It returns an error if marshaling fails.
+func CreateMessage(data []byte, timestamp time.Time) string {
+	message := Message{
+		Text: data,
+		Time: timestamp,
+	}
+
+	jsonData, err := json.Marshal(message)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create request data: %v", err))
+	}
+
+	return string(jsonData)
+}
+
 func TestSegmentation(t *testing.T) {
 	type args struct {
-		Data        []byte
+		RequestBody string
 		SegmentSize int
-		Time        time.Time
 		Segments    []string
 	}
 
@@ -78,9 +93,8 @@ func TestSegmentation(t *testing.T) {
 		{
 			name: "Ok",
 			args: args{
-				Data:        []byte{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'},
+				RequestBody: CreateMessage([]byte{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'}, time.Date(2024, time.February, 28, 1, 1, 1, 1, time.UTC)),
 				SegmentSize: 4,
-				Time:        time.Date(2024, time.February, 28, 1, 1, 1, 1, time.UTC),
 				Segments: []string{
 					fmt.Sprintf("{\"data\":\"%s\",\"time\":\"%s\",\"count\":%d}", string([]byte{'A', 'B', 'C', 'D'}), "2024-02-28T01:01:01.000000001Z", 3),
 					fmt.Sprintf("{\"data\":\"%s\",\"time\":\"%s\",\"count\":%d}", string([]byte{'E', 'F', 'G', 'H'}), "2024-02-28T01:01:01.000000001Z", 3),
@@ -92,9 +106,8 @@ func TestSegmentation(t *testing.T) {
 		{
 			name: "Invalid JSON Input",
 			args: args{
-				Data:        []byte("Invalid JSON"),
+				RequestBody: "Invalid JSON",
 				SegmentSize: 4,
-				Time:        time.Date(2024, time.February, 28, 1, 1, 1, 1, time.UTC),
 				Segments:    nil,
 			},
 			wantErr: true,
@@ -114,16 +127,7 @@ func TestSegmentation(t *testing.T) {
 			router := gin.New()
 			router.POST("/test", server.Segmentation)
 
-			jsonData, err := json.Marshal(Message{
-				Text: tt.args.Data,
-				Time: tt.args.Time,
-			})
-			if err != nil {
-				t.Fatal(err)
-				return
-			}
-
-			req, err := http.NewRequest("POST", "/test", bytes.NewBuffer(jsonData))
+			req, err := http.NewRequest("POST", "/test", bytes.NewBuffer([]byte(tt.args.RequestBody)))
 			if err != nil {
 				t.Fatal(err)
 				return
@@ -134,6 +138,9 @@ func TestSegmentation(t *testing.T) {
 			router.ServeHTTP(w, req)
 
 			if w.Code != http.StatusOK {
+				if tt.wantErr {
+					return
+				}
 				t.Errorf("Unexpected status code: got %v, want %v", w.Code, http.StatusOK)
 				return
 			}
