@@ -96,9 +96,9 @@ func TestSegmentation(t *testing.T) {
 				RequestBody: CreateMessage([]byte{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'}, time.Date(2024, time.February, 28, 1, 1, 1, 1, time.UTC)),
 				SegmentSize: 4,
 				Segments: []string{
-					fmt.Sprintf("{\"data\":\"%s\",\"time\":\"%s\",\"count\":%d}", string([]byte{'A', 'B', 'C', 'D'}), "2024-02-28T01:01:01.000000001Z", 3),
-					fmt.Sprintf("{\"data\":\"%s\",\"time\":\"%s\",\"count\":%d}", string([]byte{'E', 'F', 'G', 'H'}), "2024-02-28T01:01:01.000000001Z", 3),
-					fmt.Sprintf("{\"data\":\"%s\",\"time\":\"%s\",\"count\":%d}", string([]byte{'I', 'J'}), "2024-02-28T01:01:01.000000001Z", 3),
+					fmt.Sprintf("{\"data\":\"%s\",\"time\":\"%s\",\"number\":%d,\"count\":%d}", string([]byte{'A', 'B', 'C', 'D'}), "2024-02-28T01:01:01.000000001Z", 0, 3),
+					fmt.Sprintf("{\"data\":\"%s\",\"time\":\"%s\",\"number\":%d,\"count\":%d}", string([]byte{'E', 'F', 'G', 'H'}), "2024-02-28T01:01:01.000000001Z", 1, 3),
+					fmt.Sprintf("{\"data\":\"%s\",\"time\":\"%s\",\"number\":%d,\"count\":%d}", string([]byte{'I', 'J'}), "2024-02-28T01:01:01.000000001Z", 2, 3),
 				},
 			},
 			wantErr: false,

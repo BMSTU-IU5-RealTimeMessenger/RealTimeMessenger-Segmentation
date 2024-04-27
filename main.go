@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -13,7 +15,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
-//TODO: logs
+type Segment struct {
+	Data   string `json:"data"`
+	Time   int64  `json:"time"`
+	Number int    `json:"number"`
+	Count  int    `json:"count"`
+}
+
 
 type Server struct {
 	HTTPClient  *http.Client
@@ -24,7 +32,7 @@ type Server struct {
 func New() (*Server, error) {
 	err := godotenv.Load()
 	if err != nil {
-		return nil, err
+		log.Println("No .env file")
 	}
 
 	segmentSize, err := strconv.Atoi(os.Getenv("SEGMENT_SIZE"))
@@ -34,7 +42,7 @@ func New() (*Server, error) {
 
 	return &Server{
 		HTTPClient:  http.DefaultClient,
-		Destination: os.Getenv("DESTINATION"),
+		Destination: os.Getenv("DATA_LAYER_ADDR"),
 		SegmentSize: segmentSize,
 	}, nil
 }
@@ -42,25 +50,31 @@ func New() (*Server, error) {
 func (s *Server) Run() {
 	r := gin.Default()
 
-	r.POST("/segmentation", s.Segmentation)
+	r.POST("/send", s.Segmentation)
 
-	r.Run(":8080")
+	log.Println("Server is running")
+	r.Run(":" + os.Getenv("SEGMENTATION_SERVER_PORT"))
 }
+
 func (s *Server) Segmentation(c *gin.Context) {
-	var message Message
-	if err := c.ShouldBindJSON(&message); err != nil {
+	data, err := io.ReadAll(c.Request.Body)
+	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
+	log.Println("Got requiest with data:\n", string(data))
+	portions := split(data, s.SegmentSize)
+	log.Println("Split data into segments:")
 
-	portions := split(message.Text, s.SegmentSize)
-
-	for _, portion := range portions {
+	currentTime := time.Now().UnixMilli()
+	for i, portion := range portions {
 		segment := Segment{
-			Data:  string(portion),
-			Time:  message.Time,
-			Count: len(portions),
+			Data:   string(portion),
+			Time:   currentTime,
+			Number: i,
+			Count:  len(portions),
 		}
+		log.Println(segment)
 		if err := s.send(segment); err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
@@ -71,13 +85,13 @@ func (s *Server) Segmentation(c *gin.Context) {
 }
 
 func main() {
-	server, _ := New()
-	server.Run()
-}
+	server, err := New()
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
 
-type Message struct {
-	Text []byte    `json:"text"`
-	Time time.Time `json:"time"`
+	server.Run()
 }
 
 func split(data []byte, chunkSize int) [][]byte {
@@ -94,19 +108,13 @@ func split(data []byte, chunkSize int) [][]byte {
 	return portions
 }
 
-type Segment struct {
-	Data  string    `json:"data"`
-	Time  time.Time `json:"time"`
-	Count int       `json:"count"`
-}
-
 func (s *Server) send(segment Segment) error {
 	jsonData, err := json.Marshal(segment)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", s.Destination, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", "http://"+s.Destination, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}
