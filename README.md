@@ -4,5 +4,4 @@
 
 [Сервер получения сегментов](https://github.com/BMSTU-IU5-RealTimeMessenger/RealTimeMessenger-Collection)
 
-
 [Сервер сборки сообщений](https://github.com/BMSTU-IU5-RealTimeMessenger/RealTimeMessenger-Assembly)
