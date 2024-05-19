@@ -22,7 +22,6 @@ type Segment struct {
 	Count  int    `json:"count"`
 }
 
-
 type Server struct {
 	HTTPClient  *http.Client
 	Destination string
@@ -42,7 +41,7 @@ func New() (*Server, error) {
 
 	return &Server{
 		HTTPClient:  http.DefaultClient,
-		Destination: os.Getenv("DATA_LAYER_ADDR"),
+		Destination: os.Getenv("CHANNEL_LAYER_ADDR"),
 		SegmentSize: segmentSize,
 	}, nil
 }
@@ -53,7 +52,7 @@ func (s *Server) Run() {
 	r.POST("/send", s.Segmentation)
 
 	log.Println("Server is running")
-	r.Run(":" + os.Getenv("SEGMENTATION_SERVER_PORT"))
+	r.Run(os.Getenv("IP") + ":" + os.Getenv("SEGMENTATION_SERVER_PORT"))
 }
 
 func (s *Server) Segmentation(c *gin.Context) {
@@ -62,9 +61,8 @@ func (s *Server) Segmentation(c *gin.Context) {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
-	log.Println("Got requiest with data:\n", string(data))
+	log.Println("> ", string(data))
 	portions := split(data, s.SegmentSize)
-	log.Println("Split data into segments:")
 
 	currentTime := time.Now().UnixMilli()
 	for i, portion := range portions {
@@ -74,7 +72,7 @@ func (s *Server) Segmentation(c *gin.Context) {
 			Number: i,
 			Count:  len(portions),
 		}
-		log.Println(segment)
+		log.Println("<", segment)
 		if err := s.send(segment); err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
